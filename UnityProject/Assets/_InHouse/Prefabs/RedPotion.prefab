@@ -77,7 +77,8 @@ MonoBehaviour:
   col: {fileID: 1470437352072966608}
   type: 0
   height: 0.5
-  stackRotation: {x: 90, y: 90, z: 0}
+  stackOnHandRotation: {x: 90, y: 90, z: 0}
+  stackOnZoneRotation: {x: 90, y: 180, z: 0}
 --- !u!1001 &6332450263023991649
 PrefabInstance:
   m_ObjectHideFlags: 0

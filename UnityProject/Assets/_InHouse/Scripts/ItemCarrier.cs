@@ -10,18 +10,26 @@ public class ItemCarrier : MonoBehaviour
     [SerializeField] private float stackDuration;
     [SerializeField] private float arcHeight;
 
+    [Header("Deliver Settings")]
+    [SerializeField] private float deliverRate;
+    [SerializeField] private float deliverDuration;
+
     [Header("Detection Settings")]
     [SerializeField] private Transform detectPoint;
     [SerializeField] private float detectRadius;
     [SerializeField] private LayerMask itemLayer;
+    [SerializeField] private LayerMask interactableLayer;
 
     private Stack<StackableItem> stackedItems = new Stack<StackableItem>();
     private ItemType currentCarriedType;
 
+    private float nextDeliverTime;
+
 
     private void Update()
     {
-        DetectAndPickupItems();
+        DetectItems();
+        DetectZones();
     }
 
     private void OnDrawGizmos()
@@ -33,7 +41,7 @@ public class ItemCarrier : MonoBehaviour
         }
     }
 
-    private void DetectAndPickupItems()
+    private void DetectItems()
     {
         if (stackedItems.Count >= maxCapacity)
             return;
@@ -44,16 +52,32 @@ public class ItemCarrier : MonoBehaviour
             if (stackedItems.Count >= maxCapacity)
                 break;
 
-            StackableItem item = hit.GetComponentInParent<StackableItem>();
-            if (item != null)
+            StackableItem stackableItem = hit.GetComponentInParent<StackableItem>();
+            if (stackableItem != null)
             {
-                if (item.IsStacked)
+                if (stackableItem.IsStacked)
                     continue;
 
-                if (stackedItems.Count == 0 || currentCarriedType == item.Type)
+                if (stackedItems.Count == 0 || currentCarriedType == stackableItem.Type)
                 {
-                    Pickup(item);
+                    Pickup(stackableItem);
                 }
+            }
+        }
+    }
+
+    private void DetectZones()
+    {
+        Collider[] hits = Physics.OverlapSphere(detectPoint.position, detectRadius, interactableLayer);
+        foreach (Collider hit in hits)
+        {
+            if (hit.TryGetComponent(out InputZone inputZone))
+            {
+                if (stackedItems.Count == 0 || !inputZone.CanAcceptItem(currentCarriedType) || Time.time < nextDeliverTime)
+                    continue;
+
+                PutItemToInputZone(inputZone);
+                nextDeliverTime = Time.time + deliverRate;
             }
         }
     }
@@ -69,7 +93,7 @@ public class ItemCarrier : MonoBehaviour
         item.transform.SetParent(stackedItemsParent);
 
         Vector3 targetLocalPosition = new Vector3(0, stackedItems.Count * item.Height, 0);
-        Quaternion targetLocalRotation = Quaternion.Euler(item.StackRotation);
+        Quaternion targetLocalRotation = Quaternion.Euler(item.StackOnHandRotation);
 
         stackedItems.Push(item);
 
@@ -98,5 +122,44 @@ public class ItemCarrier : MonoBehaviour
 
         item.transform.localPosition = targetLocalPosition;
         item.transform.localRotation = targetLocalRotation;
+    }
+
+    private void PutItemToInputZone(InputZone inputZone)
+    {
+        StackableItem itemToDrop = stackedItems.Pop();
+        itemToDrop.transform.SetParent(null);
+        inputZone.RegisterIncomingItem();
+
+        Vector3 dropPosition = inputZone.GetNextDropPosition(itemToDrop.Height);
+        Quaternion dropRotation = Quaternion.Euler(itemToDrop.StackOnZoneRotation);
+        StartCoroutine(MoveItemToZone(itemToDrop, dropPosition, dropRotation, inputZone));
+    }
+
+    private IEnumerator MoveItemToZone(StackableItem item, Vector3 targetWorldPosition, Quaternion targetRotation, InputZone zone)
+    {
+        Vector3 startPosition = item.transform.position;
+        Quaternion startRotation = item.transform.rotation;
+        float elapsedTime = 0f;
+
+        while (elapsedTime < deliverDuration)
+        {
+            elapsedTime += Time.deltaTime;
+            float t = Mathf.Clamp01(elapsedTime / deliverDuration);
+
+            Vector3 currentPos = Vector3.Lerp(startPosition, targetWorldPosition, t);
+            Quaternion currentRot = Quaternion.Lerp(startRotation, targetRotation, t);
+
+            currentPos.y += Mathf.Sin(t * Mathf.PI) * arcHeight;
+
+            item.transform.position = currentPos;
+            item.transform.rotation = currentRot;
+
+            yield return null;
+        }
+
+        item.transform.position = targetWorldPosition;
+        item.transform.rotation = targetRotation;
+
+        zone.AddItemToStack(item);
     }
 }

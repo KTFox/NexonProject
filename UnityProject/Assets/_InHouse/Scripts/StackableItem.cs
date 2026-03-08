@@ -15,14 +15,16 @@ public class StackableItem : MonoBehaviour
     [Header("Stacking Item Properties")]
     [SerializeField] private ItemType type;
     [SerializeField] private float height;
-    [SerializeField] private Vector3 stackRotation;
+    [SerializeField] private Vector3 stackOnHandRotation;
+    [SerializeField] private Vector3 stackOnZoneRotation;
 
     private bool isStacked;
 
 
     public ItemType Type => type;
     public float Height => height;
-    public Vector3 StackRotation => stackRotation;
+    public Vector3 StackOnHandRotation => stackOnHandRotation;
+    public Vector3 StackOnZoneRotation => stackOnZoneRotation;
     public bool IsStacked => isStacked;
 
 
