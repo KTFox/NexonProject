@@ -1,21 +1,20 @@
 using UnityEngine;
 
-public class PlayerMovement : MonoBehaviour
+public class PlayerController : MonoBehaviour
 {
+    [Header("Componenets")]
+    [SerializeField] private Rigidbody rb;
+    [SerializeField] private Animator animator;
+
+    [Header("Movement")]
     [SerializeField] private Joystick joyStick;
     [SerializeField] private float moveSpeed;
     [SerializeField] private float rotationSpeed;
 
-    private Rigidbody rb;
     private Camera mainCamera;
 
     private Vector3 moveDirection;
 
-
-    private void Awake()
-    {
-        rb = GetComponent<Rigidbody>();
-    }
 
     private void Start()
     {
@@ -27,6 +26,7 @@ public class PlayerMovement : MonoBehaviour
         UpdateMoveDirection();
         HandleMoving();
         HandleRotating();
+        HandleAnimation();
     }
 
     private void UpdateMoveDirection()
@@ -64,5 +64,10 @@ public class PlayerMovement : MonoBehaviour
             Quaternion targetRotation = Quaternion.LookRotation(moveDirection);
             rb.rotation = Quaternion.Slerp(rb.rotation, targetRotation, rotationSpeed * Time.deltaTime);
         }
+    }
+
+    private void HandleAnimation()
+    {
+        animator.SetBool("isMoving", moveDirection != Vector3.zero);
     }
 }
